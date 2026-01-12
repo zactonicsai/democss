@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recipe Browser</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .dropdown-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .dropdown-content.active {
+            max-height: 500px;
+        }
+        .detail-panel {
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        .detail-panel.active {
+            transform: translateX(0);
+        }
+        /* Mobile inline detail styles */
+        .mobile-detail {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out, margin 0.3s ease-in-out;
+            opacity: 0;
+            margin: 0;
+        }
+        .mobile-detail.active {
+            max-height: 2000px;
+            opacity: 1;
+            margin-top: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .recipe-item.selected {
+            background-color: #fed7aa;
+            border-color: #fb923c;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <!-- Logo -->
+                <div class="text-2xl font-bold">
+                    🍳 Recipe Hub
+                </div>
+
+                <!-- Desktop Menu -->
+                <nav class="hidden md:flex space-x-6">
+                    <a href="#" class="hover:text-orange-200 transition">Home</a>
+                    <a href="#" class="hover:text-orange-200 transition">Recipes</a>
+                    <a href="#" class="hover:text-orange-200 transition">Categories</a>
+                    
+                    <!-- Dropdown Menu -->
+                    <div class="relative dropdown-container">
+                        <button onclick="toggleDropdown()" class="hover:text-orange-200 transition flex items-center">
+                            More
+                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div id="dropdown" class="dropdown-content absolute top-full right-0 mt-2 w-48 bg-white text-gray-800 rounded-lg shadow-xl z-50">
+                            <a href="#" class="block px-4 py-2 hover:bg-orange-100 rounded-t-lg">About Us</a>
+                            <a href="#" class="block px-4 py-2 hover:bg-orange-100">Contact</a>
+                            <a href="#" class="block px-4 py-2 hover:bg-orange-100">Settings</a>
+                            <a href="#" class="block px-4 py-2 hover:bg-orange-100 rounded-b-lg">Help</a>
+                        </div>
+                    </div>
+                </nav>
+
+                <!-- Mobile Menu Button -->
+                <button onclick="toggleMobileMenu()" class="md:hidden focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Mobile Menu -->
+            <div id="mobileMenu" class="dropdown-content md:hidden pb-4">
+                <a href="#" class="block py-2 hover:text-orange-200 transition">Home</a>
+                <a href="#" class="block py-2 hover:text-orange-200 transition">Recipes</a>
+                <a href="#" class="block py-2 hover:text-orange-200 transition">Categories</a>
+                <a href="#" class="block py-2 hover:text-orange-200 transition">About Us</a>
+                <a href="#" class="block py-2 hover:text-orange-200 transition">Contact</a>
+                <a href="#" class="block py-2 hover:text-orange-200 transition">Settings</a>
+                <a href="#" class="block py-2 hover:text-orange-200 transition">Help</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Browse Recipes</h1>
+            
+            <!-- Expand/Collapse Button (Desktop only) -->
+            <button onclick="toggleDetailPanel()" 
+                    id="expandBtn"
+                    class="hidden lg:flex items-center space-x-2 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition shadow-md">
+                <span id="expandText">Expand View</span>
+                <svg id="expandIcon" class="w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Container with two sections -->
+        <div class="flex flex-col lg:grid lg:grid-cols-12 gap-6">
+            <!-- Main Container - Recipe List -->
+            <div id="mainContainer" class="lg:col-span-12 transition-all duration-300">
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-2xl font-semibold mb-4 text-gray-800">Recipe Collection</h2>
+                    <div id="recipeList" class="space-y-3">
+                        <!-- Recipe items will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detail Container - Recipe Details (Desktop only) -->
+            <div id="detailContainer" class="hidden lg:block lg:col-span-5">
+                <div class="bg-white rounded-lg shadow-lg p-6 lg:sticky lg:top-4">
+                    <div class="flex justify-between items-start mb-4">
+                        <h2 class="text-2xl font-semibold text-gray-800">Recipe Details</h2>
+                        <button onclick="closeDetail()" class="text-gray-500 hover:text-gray-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="recipeDetail">
+                        <p class="text-gray-500 text-center py-8">Select a recipe to view details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // JSON data for recipes
+        const recipesData = [
+            {
+                id: 1,
+                name: "Classic Margherita Pizza",
+                category: "Italian",
+                difficulty: "Easy",
+                time: "30 mins",
+                image: "🍕",
+                description: "A traditional Italian pizza with fresh tomatoes, mozzarella, and basil.",
+                ingredients: [
+                    "Pizza dough",
+                    "2 cups mozzarella cheese",
+                    "4 tomatoes, sliced",
+                    "Fresh basil leaves",
+                    "2 tbsp olive oil",
+                    "Salt and pepper to taste"
+                ],
+                instructions: [
+                    "Preheat oven to 475°F (245°C)",
+                    "Roll out pizza dough on a floured surface",
+                    "Spread olive oil over the dough",
+                    "Layer sliced tomatoes and mozzarella",
+                    "Bake for 12-15 minutes until crust is golden",
+                    "Top with fresh basil before serving"
+                ]
+            },
+            {
+                id: 2,
+                name: "Chicken Pad Thai",
+                category: "Thai",
+                difficulty: "Medium",
+                time: "45 mins",
+                image: "🍜",
+                description: "A flavorful Thai stir-fry with rice noodles, chicken, and tangy sauce.",
+                ingredients: [
+                    "8 oz rice noodles",
+                    "2 chicken breasts, sliced",
+                    "3 eggs",
+                    "2 cups bean sprouts",
+                    "3 tbsp fish sauce",
+                    "2 tbsp tamarind paste",
+                    "Peanuts and lime for garnish"
+                ],
+                instructions: [
+                    "Soak rice noodles in warm water for 30 minutes",
+                    "Heat oil in a wok over high heat",
+                    "Cook chicken until golden brown, set aside",
+                    "Scramble eggs in the wok",
+                    "Add drained noodles and sauce ingredients",
+                    "Toss with chicken and bean sprouts",
+                    "Serve with crushed peanuts and lime wedges"
+                ]
+            },
+            {
+                id: 3,
+                name: "Greek Salad",
+                category: "Mediterranean",
+                difficulty: "Easy",
+                time: "15 mins",
+                image: "🥗",
+                description: "A refreshing salad with cucumbers, tomatoes, olives, and feta cheese.",
+                ingredients: [
+                    "3 tomatoes, chopped",
+                    "1 cucumber, sliced",
+                    "1 red onion, sliced",
+                    "1 cup kalamata olives",
+                    "200g feta cheese",
+                    "3 tbsp olive oil",
+                    "1 tbsp red wine vinegar",
+                    "Oregano"
+                ],
+                instructions: [
+                    "Chop all vegetables into bite-sized pieces",
+                    "Combine in a large bowl",
+                    "Add olives and crumbled feta cheese",
+                    "Drizzle with olive oil and vinegar",
+                    "Sprinkle with oregano",
+                    "Toss gently and serve immediately"
+                ]
+            },
+            {
+                id: 4,
+                name: "Beef Tacos",
+                category: "Mexican",
+                difficulty: "Easy",
+                time: "25 mins",
+                image: "🌮",
+                description: "Seasoned ground beef in crispy taco shells with fresh toppings.",
+                ingredients: [
+                    "1 lb ground beef",
+                    "Taco seasoning",
+                    "8 taco shells",
+                    "Lettuce, shredded",
+                    "Tomatoes, diced",
+                    "Cheddar cheese",
+                    "Sour cream",
+                    "Salsa"
+                ],
+                instructions: [
+                    "Brown ground beef in a skillet",
+                    "Add taco seasoning and water, simmer",
+                    "Warm taco shells in oven",
+                    "Fill shells with seasoned beef",
+                    "Top with lettuce, tomatoes, and cheese",
+                    "Add sour cream and salsa",
+                    "Serve immediately"
+                ]
+            },
+            {
+                id: 5,
+                name: "Chocolate Chip Cookies",
+                category: "Dessert",
+                difficulty: "Easy",
+                time: "35 mins",
+                image: "🍪",
+                description: "Classic homemade cookies with gooey chocolate chips.",
+                ingredients: [
+                    "2 cups flour",
+                    "1 cup butter, softened",
+                    "3/4 cup sugar",
+                    "3/4 cup brown sugar",
+                    "2 eggs",
+                    "2 tsp vanilla extract",
+                    "1 tsp baking soda",
+                    "2 cups chocolate chips"
+                ],
+                instructions: [
+                    "Preheat oven to 375°F (190°C)",
+                    "Cream butter and sugars together",
+                    "Beat in eggs and vanilla",
+                    "Mix in flour and baking soda",
+                    "Fold in chocolate chips",
+                    "Drop spoonfuls onto baking sheet",
+                    "Bake 9-11 minutes until golden"
+                ]
+            },
+            {
+                id: 6,
+                name: "Sushi Rolls",
+                category: "Japanese",
+                difficulty: "Hard",
+                time: "60 mins",
+                image: "🍣",
+                description: "Fresh homemade sushi with rice, nori, and your choice of fillings.",
+                ingredients: [
+                    "2 cups sushi rice",
+                    "4 nori sheets",
+                    "1/4 cup rice vinegar",
+                    "Cucumber strips",
+                    "Avocado slices",
+                    "Fresh fish (tuna or salmon)",
+                    "Soy sauce",
+                    "Wasabi and pickled ginger"
+                ],
+                instructions: [
+                    "Cook sushi rice and season with rice vinegar",
+                    "Place nori sheet on bamboo mat",
+                    "Spread thin layer of rice on nori",
+                    "Add fish and vegetables in a line",
+                    "Roll tightly using the mat",
+                    "Slice into 6-8 pieces with wet knife",
+                    "Serve with soy sauce, wasabi, and ginger"
+                ]
+            }
+        ];
+
+        let detailPanelOpen = false;
+        let currentSelectedId = null;
+
+        // Check if mobile view
+        function isMobile() {
+            return window.innerWidth < 1024;
+        }
+
+        // Initialize the recipe list
+        function initRecipeList() {
+            const recipeList = document.getElementById('recipeList');
+            recipeList.innerHTML = recipesData.map(recipe => `
+                <div id="recipe-${recipe.id}" onclick="showRecipeDetail(${recipe.id})" 
+                     class="recipe-item flex items-center p-4 border border-gray-200 rounded-lg hover:bg-orange-50 hover:border-orange-300 cursor-pointer transition-all transform hover:scale-[1.02]">
+                    <div class="text-4xl mr-4">${recipe.image}</div>
+                    <div class="flex-1">
+                        <h3 class="font-semibold text-lg text-gray-800">${recipe.name}</h3>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <span class="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">${recipe.category}</span>
+                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">${recipe.difficulty}</span>
+                            <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">⏱ ${recipe.time}</span>
+                        </div>
+                    </div>
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </div>
+            `).join('');
+        }
+
+        // Generate detail HTML
+        function getDetailHTML(recipe, isMobileView = false) {
+            const closeButton = isMobileView ? `
+                <button onclick="closeMobileDetail()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            ` : `
+                <button onclick="closeDetail()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            `;
+
+            return `
+                <div class="space-y-6">
+                    ${isMobileView ? `
+                    <div class="flex justify-between items-start mb-4">
+                        <h2 class="text-xl font-semibold text-gray-800">Recipe Details</h2>
+                        ${closeButton}
+                    </div>
+                    ` : ''}
+                    <div class="text-center">
+                        <div class="text-6xl mb-3">${recipe.image}</div>
+                        <h3 class="text-2xl font-bold text-gray-800">${recipe.name}</h3>
+                        <p class="text-gray-600 mt-2">${recipe.description}</p>
+                    </div>
+
+                    <div class="flex justify-around bg-gray-50 rounded-lg p-4">
+                        <div class="text-center">
+                            <div class="text-sm text-gray-600">Category</div>
+                            <div class="font-semibold">${recipe.category}</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-sm text-gray-600">Difficulty</div>
+                            <div class="font-semibold">${recipe.difficulty}</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-sm text-gray-600">Time</div>
+                            <div class="font-semibold">${recipe.time}</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-lg mb-3 text-gray-800">Ingredients</h4>
+                        <ul class="space-y-2">
+                            ${recipe.ingredients.map(ing => `
+                                <li class="flex items-start">
+                                    <span class="text-orange-500 mr-2">•</span>
+                                    <span class="text-gray-700">${ing}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-lg mb-3 text-gray-800">Instructions</h4>
+                        <ol class="space-y-3">
+                            ${recipe.instructions.map((instruction, index) => `
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-sm font-semibold mr-3">
+                                        ${index + 1}
+                                    </span>
+                                    <span class="text-gray-700 pt-0.5">${instruction}</span>
+                                </li>
+                            `).join('')}
+                        </ol>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Show recipe details
+        function showRecipeDetail(recipeId) {
+            const recipe = recipesData.find(r => r.id === recipeId);
+            if (!recipe) return;
+
+            if (isMobile()) {
+                showMobileDetail(recipeId, recipe);
+            } else {
+                showDesktopDetail(recipe);
+            }
+        }
+
+        // Show mobile detail (inline below item)
+        function showMobileDetail(recipeId, recipe) {
+            // Remove any existing mobile detail
+            const existingDetail = document.getElementById('mobile-detail');
+            if (existingDetail) {
+                existingDetail.remove();
+            }
+
+            // Remove selected class from all items
+            document.querySelectorAll('.recipe-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+
+            // If clicking the same item, just close it
+            if (currentSelectedId === recipeId) {
+                currentSelectedId = null;
+                return;
+            }
+
+            // Add selected class to clicked item
+            const selectedItem = document.getElementById(`recipe-${recipeId}`);
+            selectedItem.classList.add('selected');
+            currentSelectedId = recipeId;
+
+            // Create mobile detail element
+            const detailDiv = document.createElement('div');
+            detailDiv.id = 'mobile-detail';
+            detailDiv.className = 'mobile-detail bg-white border border-orange-300 rounded-lg p-4 shadow-lg';
+            detailDiv.innerHTML = getDetailHTML(recipe, true);
+
+            // Insert after the selected item
+            selectedItem.insertAdjacentElement('afterend', detailDiv);
+
+            // Trigger animation
+            setTimeout(() => {
+                detailDiv.classList.add('active');
+                // Scroll to show the detail
+                setTimeout(() => {
+                    detailDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 100);
+            }, 10);
+        }
+
+        // Close mobile detail
+        function closeMobileDetail() {
+            const detail = document.getElementById('mobile-detail');
+            if (detail) {
+                detail.classList.remove('active');
+                setTimeout(() => {
+                    detail.remove();
+                }, 300);
+            }
+            
+            // Remove selected class
+            document.querySelectorAll('.recipe-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            currentSelectedId = null;
+        }
+
+        // Show desktop detail (side panel)
+        function showDesktopDetail(recipe) {
+            // If detail panel is not open, open it first
+            if (!detailPanelOpen) {
+                toggleDetailPanel();
+            }
+
+            const detailContent = getDetailHTML(recipe, false);
+            document.getElementById('recipeDetail').innerHTML = detailContent;
+        }
+
+        // Toggle detail panel (desktop)
+        function toggleDetailPanel() {
+            if (isMobile()) {
+                // On mobile, this button doesn't make sense, so do nothing
+                return;
+            }
+
+            detailPanelOpen = !detailPanelOpen;
+            const mainContainer = document.getElementById('mainContainer');
+            const detailContainer = document.getElementById('detailContainer');
+            const expandText = document.getElementById('expandText');
+            const expandIcon = document.getElementById('expandIcon');
+
+            if (detailPanelOpen) {
+                mainContainer.classList.remove('lg:col-span-12');
+                mainContainer.classList.add('lg:col-span-7');
+                detailContainer.classList.remove('hidden');
+                detailContainer.classList.add('lg:block');
+                expandText.textContent = 'Collapse View';
+                expandIcon.style.transform = 'rotate(180deg)';
+            } else {
+                mainContainer.classList.remove('lg:col-span-7');
+                mainContainer.classList.add('lg:col-span-12');
+                detailContainer.classList.add('hidden');
+                detailContainer.classList.remove('lg:block');
+                expandText.textContent = 'Expand View';
+                expandIcon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // Close detail panel (desktop)
+        function closeDetail() {
+            if (detailPanelOpen) {
+                toggleDetailPanel();
+            }
+        }
+
+        // Toggle dropdown menu
+        function toggleDropdown() {
+            const dropdown = document.getElementById('dropdown');
+            dropdown.classList.toggle('active');
+        }
+
+        // Toggle mobile menu
+        function toggleMobileMenu() {
+            const mobileMenu = document.getElementById('mobileMenu');
+            mobileMenu.classList.toggle('active');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('dropdown');
+            const dropdownContainer = document.querySelector('.dropdown-container');
+            
+            if (dropdown && !dropdownContainer.contains(event.target)) {
+                dropdown.classList.remove('active');
+            }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            // If switching from mobile to desktop, clean up mobile detail
+            if (!isMobile()) {
+                const mobileDetail = document.getElementById('mobile-detail');
+                if (mobileDetail) {
+                    mobileDetail.remove();
+                }
+                document.querySelectorAll('.recipe-item').forEach(item => {
+                    item.classList.remove('selected');
+                });
+            } else {
+                // If switching to mobile, close desktop panel
+                if (detailPanelOpen) {
+                    closeDetail();
+                }
+            }
+        });
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', initRecipeList);
+    </script>
+</body>
+</html>
